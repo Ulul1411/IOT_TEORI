@@ -1,0 +1,74 @@
+#include <WiFi.h>
+#include "DHTesp.h"
+#include "ThingSpeak.h"
+#include <Adafruit_Sensor.h>
+
+const int DHT_PIN = 15;
+const char * SSID = "Wokwi-GUEST";
+const char * PASS = "";
+
+WiFiClient client;
+
+unsigned long MyChannelNumber = 2001015;
+const char *MyWriteAPIKey = "DOYRABCP5POF8CPS";
+const char * server = "api.thingspeak.com";
+
+unsigned long lastTime = 0;
+unsigned long timerDelay = 3000;
+
+int temperatureC;
+int humidity;
+int LEDM = 4; //LED merah pada pin D4
+int LEDK = 14; //LED kuning pada pin D14
+
+DHTesp dhtSensor;
+
+void setup() {
+  Serial.begin(112000);
+  dhtSensor.setup(DHT_PIN, DHTesp::DHT22);
+  dhtSensor.getPin();
+  delay(10);
+  pinMode(LEDM, OUTPUT);
+  pinMode(LEDK, OUTPUT);
+  WiFi.begin(SSID, PASS);
+  Serial.print("Connecting");
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(500);
+    Serial.println(".");
+  }
+  Serial.println("Connected, IP address:");
+  Serial.println(WiFi.localIP());
+  ThingSpeak.begin(client);
+}
+
+void loop() {
+  temperatureC = dhtSensor.getTemperature();
+  Serial.print("Temperature (*C): ");
+  Serial.println(temperatureC);
+
+  humidity = dhtSensor.getHumidity();
+  Serial.print("Humidity (%); ");
+  Serial.println(humidity);
+
+  ThingSpeak.setField(1, temperatureC);
+  ThingSpeak.setField(2, humidity);
+
+  int x = ThingSpeak.writeFields(MyChannelNumber, MyWriteAPIKey);
+  if(x ==200){
+    Serial.println("Channel update successful.");
+  }
+
+  if (temperatureC >= 30){ //Jika suhu >= 30*C, maka LAMPU MERAH MENYALA
+  digitalWrite(LEDM, HIGH);
+  }
+  if (humidity <= 70) { //jika kelembapan <= 70, maka lampu KUNING MENYALA
+  digitalWrite(LEDK,HIGH);
+  }
+  else if (temperatureC >= 30){ 
+  digitalWrite(LEDM, HIGH);
+  }
+  else if (humidity <= 70){ 
+  digitalWrite(LEDK, HIGH);
+  }
+}
